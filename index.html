@@ -160,12 +160,12 @@
 <!-- ══ LOGIN ══ -->
 <div id="screen-login" class="screen">
   <!-- Language Switcher -->
-  <div style="position:absolute;top:20px;left:50%;transform:translateX(-50%);display:flex;gap:6px;">
-    <button class="lang-btn active" data-lang="ar" onclick="setLang('ar')" style="padding:6px 14px;border-radius:20px;border:1px solid #333;background:transparent;color:var(--text-muted);font-family:Tajawal,sans-serif;font-size:13px;cursor:pointer;">عربي</button>
-    <button class="lang-btn" data-lang="nl" onclick="setLang('nl')" style="padding:6px 14px;border-radius:20px;border:1px solid #333;background:transparent;color:var(--text-muted);font-family:Tajawal,sans-serif;font-size:13px;cursor:pointer;">NL</button>
-    <button class="lang-btn" data-lang="en" onclick="setLang('en')" style="padding:6px 14px;border-radius:20px;border:1px solid #333;background:transparent;color:var(--text-muted);font-family:Tajawal,sans-serif;font-size:13px;cursor:pointer;">EN</button>
-  </div>
   <div class="logo-block">
+    <div style="display:flex;gap:6px;justify-content:center;margin-bottom:20px;">
+      <button class="lang-btn active" data-lang="ar" onclick="setLang('ar')" style="padding:6px 14px;border-radius:20px;border:1px solid #333;background:transparent;color:var(--text-muted);font-family:Tajawal,sans-serif;font-size:13px;cursor:pointer;">عربي</button>
+      <button class="lang-btn" data-lang="nl" onclick="setLang('nl')" style="padding:6px 14px;border-radius:20px;border:1px solid #333;background:transparent;color:var(--text-muted);font-family:Tajawal,sans-serif;font-size:13px;cursor:pointer;">NL</button>
+      <button class="lang-btn" data-lang="en" onclick="setLang('en')" style="padding:6px 14px;border-radius:20px;border:1px solid #333;background:transparent;color:var(--text-muted);font-family:Tajawal,sans-serif;font-size:13px;cursor:pointer;">EN</button>
+    </div>
     <div class="logo-icon">ZY</div>
     <h1>ZY SERVICES</h1>
     <p>نظام تسجيل الساعات</p>
@@ -220,7 +220,10 @@
 <div id="screen-admin" class="screen">
   <div class="admin-header">
     <div><h2>لوحة المشرف</h2><small id="admin-date">اليوم</small></div>
-    <button class="export-btn" onclick="exportCSV()">📥 CSV</button>
+    <div style="display:flex;gap:8px;">
+      <button class="export-btn" onclick="exportCSV()">📥 CSV</button>
+      <button class="logout-btn" onclick="doLogout()" style="background:#1a1a1a;border:1px solid #333;color:#888;font-size:12px;padding:8px 14px;border-radius:20px;cursor:pointer;font-family:Tajawal,sans-serif;">خروج</button>
+    </div>
   </div>
   <div class="stats-row">
     <div class="stat-card active-now"><div class="num" id="stat-active">0</div><div class="label">يعملون الآن</div></div>
@@ -619,7 +622,8 @@ function handleAction() {
   const now = Date.now();
   const d = getData();
   if(!active) {
-    d.shifts.push({ id:now, worker:currentWorker, date:todayStr(), checkIn:now, checkOut:null, location:locationData, locationOut:null, durationMs:null });
+    const todaySched = getTodaySchedules(currentWorker)[0];
+    d.shifts.push({ id:now, worker:currentWorker, date:todayStr(), checkIn:now, checkOut:null, location:locationData, locationName: todaySched ? (todaySched.location||null) : null, clientName: todaySched ? (todaySched.client||todaySched.location||'') : '', locationOut:null, durationMs:null });
     saveData(d);
     showToast(`تم تسجيل وصولك ✅`, 'success');
     sendWhatsApp(`🟢 ${currentWorker} وصل موقع العمل\n🕐 ${fmtTime(now)}\n📍 ${locationData ? locationData.lat+', '+locationData.lng : 'بدون GPS'}`);
@@ -667,7 +671,7 @@ function renderTodayShifts() {
     <div class="shift-item">
       <div>
         <div class="times">${fmtTime(s.checkIn)} → ${s.checkOut ? fmtTime(s.checkOut) : '...'}</div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${s.location ? `📍 ${s.location.lat}, ${s.location.lng}` : 'بدون GPS'}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">📍 ${s.locationName || (s.location ? s.location.lat+', '+s.location.lng : 'بدون GPS')}${s.clientName && s.clientName !== s.locationName ? ' · '+s.clientName : ''}</div>
       </div>
       ${!s.checkOut ? `<span class="badge-active">جارية</span>` : `<span class="duration">${fmtDur(s.durationMs)}</span>`}
     </div>`).join('');
