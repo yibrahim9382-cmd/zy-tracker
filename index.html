@@ -669,6 +669,17 @@ function getLocation() {
     document.getElementById('loc-tag').classList.add('has-loc');
     document.getElementById('loc-text').textContent = `${locationData.lat}, ${locationData.lng} (±${locationData.accuracy}m)`;
     document.getElementById('wk-location-name').textContent = 'GPS ✓';
+    // تحويل إحداثيات لاسم مدينة
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${locationData.lat}&lon=${locationData.lng}&format=json`)
+      .then(r=>r.json())
+      .then(d=>{
+        const city = d.address.city || d.address.town || d.address.village || d.address.municipality || '';
+        if(city) {
+          const mapsUrl = `https://maps.google.com/?q=${locationData.lat},${locationData.lng}`;
+          document.getElementById('loc-text').innerHTML = `<a href="${mapsUrl}" target="_blank" style="color:var(--green);text-decoration:none;">📍 ${city} (±${locationData.accuracy}m)</a>`;
+          locationData.cityName = city;
+        }
+      }).catch(()=>{});
   }, ()=>{ document.getElementById('loc-text').textContent = 'تعذّر تحديد الموقع'; });
 }
 
@@ -725,7 +736,7 @@ function handleAction() {
   const d = getData();
   if(!active) {
     const todaySched = getTodaySchedules(currentWorker)[0];
-    d.shifts.push({ id:now, worker:currentWorker, date:todayStr(), checkIn:now, checkOut:null, location:locationData, locationName: todaySched ? (todaySched.location||null) : null, clientName: currentAssignedClient || (todaySched ? (todaySched.client||todaySched.location||'') : ''), locationOut:null, durationMs:null });
+    d.shifts.push({ id:now, worker:currentWorker, date:todayStr(), checkIn:now, checkOut:null, location:locationData, locationName: todaySched ? (todaySched.location||null) : null, cityName: locationData ? (locationData.cityName||'') : '', clientName: currentAssignedClient || (todaySched ? (todaySched.client||todaySched.location||'') : ''), locationOut:null, durationMs:null });
     saveData(d);
     showToast(`تم تسجيل وصولك ✅`, 'success');
     sendWhatsApp(`🟢 ${currentWorker} وصل موقع العمل\n🕐 ${fmtTime(now)}\n📍 ${locationData ? locationData.lat+', '+locationData.lng : 'بدون GPS'}`);
@@ -992,7 +1003,7 @@ function calcPayroll() {
     const daysHtml=Object.entries(byDate).map(([date,ds])=>{
       const dayMs=ds.reduce((a,s)=>a+(s.durationMs||0),0);
       const locHtml=ds.map(s=>{
-        const clientLoc = s.clientName || s.locationName;
+        const clientLoc = s.clientName || s.locationName || s.cityName;
         const gpsLoc = s.location ? s.location.lat+','+s.location.lng : '';
         const mapsUrl = s.location ? `https://maps.google.com/?q=${s.location.lat},${s.location.lng}` : '';
         const locText = clientLoc || gpsLoc;
