@@ -992,8 +992,15 @@ function calcPayroll() {
     const daysHtml=Object.entries(byDate).map(([date,ds])=>{
       const dayMs=ds.reduce((a,s)=>a+(s.durationMs||0),0);
       const locHtml=ds.map(s=>{
-        const loc = s.clientName || s.locationName || (s.location ? s.location.lat+','+s.location.lng : '');
-        return loc ? `<div style="font-size:11px;color:var(--gold);margin-top:2px;">📍 ${loc} · ${fmtTime(s.checkIn)}–${fmtTime(s.checkOut)}</div>` : '';
+        const clientLoc = s.clientName || s.locationName;
+        const gpsLoc = s.location ? s.location.lat+','+s.location.lng : '';
+        const mapsUrl = s.location ? `https://maps.google.com/?q=${s.location.lat},${s.location.lng}` : '';
+        const locText = clientLoc || gpsLoc;
+        if(!locText) return '';
+        const locDisplay = mapsUrl 
+          ? `<a href="${mapsUrl}" target="_blank" style="color:var(--gold);text-decoration:none;">📍 ${locText}</a>`
+          : `<span style="color:var(--gold);">📍 ${locText}</span>`;
+        return `<div style="font-size:11px;margin-top:2px;">${locDisplay} · ${fmtTime(s.checkIn)}–${fmtTime(s.checkOut)}</div>`;
       }).join('');
       return `<div style="padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:4px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
