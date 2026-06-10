@@ -485,8 +485,14 @@
         <input id="schedule-end" type="time" value="16:00" style="width:100%;padding:10px;background:var(--gray);border:1px solid #333;border-radius:10px;color:var(--white);font-family:Tajawal,sans-serif;font-size:14px;outline:none;">
       </div>
     </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:13px;color:var(--text-muted);display:block;margin-bottom:6px;">الشركة / العميل</label>
+      <select id="schedule-client-select" style="width:100%;padding:12px;background:var(--gray);border:1px solid #333;border-radius:10px;color:var(--white);font-family:Tajawal,sans-serif;font-size:14px;outline:none;">
+        <option value="">— بدون شركة —</option>
+      </select>
+    </div>
     <div style="margin-bottom:20px;">
-      <label style="font-size:13px;color:var(--text-muted);display:block;margin-bottom:6px;">الموقع / العميل</label>
+      <label style="font-size:13px;color:var(--text-muted);display:block;margin-bottom:6px;">الموقع</label>
       <input id="schedule-location" type="text" placeholder="مثال: Amsterdam - Hilton" style="width:100%;padding:12px;background:var(--gray);border:1px solid #333;border-radius:10px;color:var(--white);font-family:Tajawal,sans-serif;font-size:14px;outline:none;">
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -1414,7 +1420,7 @@ function renderAdminSchedules() {
         </div>
         ${ws.length ? ws.map(s=>`
           <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(201,168,76,0.08);border-radius:8px;padding:8px 12px;margin-top:6px;font-size:13px;">
-            <span>🕐 ${s.startTime} – ${s.endTime} | 📍 ${s.location||'–'}</span>
+            <span>🕐 ${s.startTime} – ${s.endTime} | 📍 ${s.location||'–'}${s.client ? ' | 🏢 '+s.client : ''}</span>
             <button onclick="deleteSchedule('${s.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;">✕</button>
           </div>`).join('') : `<div style="font-size:12px;color:var(--text-muted);padding:6px 0;">${t('noSchedule')}</div>`}
       </div>`;
@@ -1429,6 +1435,13 @@ function openAddSchedule(worker) {
   document.getElementById('schedule-start').value = '08:00';
   document.getElementById('schedule-end').value = '16:00';
   document.getElementById('schedule-location').value = '';
+  // تعبئة قائمة الشركات
+  const clients = getClients();
+  const sel = document.getElementById('schedule-client-select');
+  if(sel) {
+    sel.innerHTML = '<option value="">— بدون شركة —</option>' + 
+      clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  }
   document.getElementById('schedule-modal').style.display = 'flex';
 }
 
@@ -1440,15 +1453,22 @@ function saveScheduleModal() {
   const start = document.getElementById('schedule-start').value;
   const end = document.getElementById('schedule-end').value;
   const loc = document.getElementById('schedule-location').value.trim();
+  const clientId = document.getElementById('schedule-client-select') ? document.getElementById('schedule-client-select').value : '';
   if(!start || !end) { showToast('حدد وقت البدء والانتهاء', 'error'); return; }
+  const clients = getClients();
+  const client = clients.find(c => String(c.id) === String(clientId));
   const schedules = getSchedules();
-  schedules.push({ id: Date.now(), worker: scheduleModalWorker, date: todayStr(), startTime: start, endTime: end, location: loc });
+  schedules.push({ 
+    id: Date.now(), worker: scheduleModalWorker, date: todayStr(), 
+    startTime: start, endTime: end, location: loc,
+    clientId: clientId, client: client ? client.name : ''
+  });
   saveSchedules(schedules);
   closeScheduleModal();
   renderAdminSchedules();
   renderAdminTasks();
   checkLateWorkers();
-  showToast('✅ ' + scheduleModalWorker + ' مجدول', 'success');
+  showToast('✅ ' + scheduleModalWorker + (client ? ' — ' + client.name : '') + ' مجدول', 'success');
 }
 
 function deleteSchedule(id) {
