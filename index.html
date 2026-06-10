@@ -378,7 +378,7 @@
     <h3>👥 إدارة العمال</h3>
     <div id="workers-settings-list"></div>
     <div style="display:flex;gap:8px;margin-top:12px;">
-      <input class="setting-input" id="new-worker-name" type="text" placeholder="اسم العامل" style="width:auto;flex:1;">
+      <input class="setting-input" id="new-worker-name" type="text" placeholder="اسم العامل" style="width:auto;flex:1;" onkeypress="if(event.key==='Enter')addWorker()">
       <button class="btn-primary" style="margin:0;padding:10px 16px;font-size:13px;" onclick="addWorker()">+ إضافة</button>
     </div>
   </div>
@@ -464,7 +464,7 @@
 <!-- modal عرض الصورة -->
 <div id="photo-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9999;align-items:center;justify-content:center;padding:20px;" onclick="closePhoto()">
   <div style="max-width:500px;width:100%;">
-    <img id="photo-modal-img" src="" style="width:100%;border-radius:12px;max-height:70vh;object-fit:contain;" />
+    <img id="photo-modal-img" src="" style="width:100%;border-radius:12px;max-height:70vh;object-fit:contain;touch-action:pinch-zoom;" />
     <div id="photo-modal-label" style="text-align:center;color:var(--white);margin-top:12px;font-size:14px;"></div>
     <div style="text-align:center;color:var(--text-muted);font-size:12px;margin-top:8px;">اضغط للإغلاق</div>
   </div>
@@ -1578,12 +1578,19 @@ function renderProofPhotos() {
   if(!el) return;
   const tasks = getTasks().filter(t => t.date === todayStr() && t.photo);
   if(!tasks.length) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">لا توجد صور بعد</div>'; return; }
-  el.innerHTML = tasks.map(t => `
-    <div style="border-radius:10px;overflow:hidden;border:1px solid #333;cursor:pointer;" onclick="openPhoto('${t.photo}','${t.worker}','${t.task.slice(0,20)}')">
+  el.innerHTML = tasks.map((t,i) => `
+    <div style="border-radius:10px;overflow:hidden;border:1px solid #333;cursor:pointer;" onclick="openPhotoByIndex(${i})">
       <img src="${t.photo}" style="width:100%;aspect-ratio:1;object-fit:cover;" />
       <div style="padding:8px;font-size:12px;color:var(--text-muted);">${t.worker} — ${t.task.slice(0,20)}</div>
     </div>
   `).join('');
+  window._proofPhotos = tasks.map(t=>({photo:t.photo, worker:t.worker, task:t.task}));
+}
+
+function openPhotoByIndex(i) {
+  const p = window._proofPhotos && window._proofPhotos[i];
+  if(!p) return;
+  openPhoto(p.photo, p.worker, p.task);
 }
 
 function openPhoto(src, worker, task) {
