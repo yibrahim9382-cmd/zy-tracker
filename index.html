@@ -461,6 +461,32 @@
 <div class="toast" id="toast"></div>
 
 <!-- modal إضافة مهمة -->
+<!-- modal إضافة وردية -->
+<div id="schedule-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:999;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#1a1a1a;border:1px solid var(--gold);border-radius:20px;padding:24px;width:100%;max-width:360px;">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:20px;color:var(--gold);">📅 إضافة وردية</h3>
+    <div id="schedule-modal-worker-name" style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--white);"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div>
+        <label style="font-size:13px;color:var(--text-muted);display:block;margin-bottom:6px;">وقت البدء</label>
+        <input id="schedule-start" type="time" value="08:00" style="width:100%;padding:10px;background:var(--gray);border:1px solid #333;border-radius:10px;color:var(--white);font-family:Tajawal,sans-serif;font-size:14px;outline:none;">
+      </div>
+      <div>
+        <label style="font-size:13px;color:var(--text-muted);display:block;margin-bottom:6px;">وقت الانتهاء</label>
+        <input id="schedule-end" type="time" value="16:00" style="width:100%;padding:10px;background:var(--gray);border:1px solid #333;border-radius:10px;color:var(--white);font-family:Tajawal,sans-serif;font-size:14px;outline:none;">
+      </div>
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="font-size:13px;color:var(--text-muted);display:block;margin-bottom:6px;">الموقع / العميل</label>
+      <input id="schedule-location" type="text" placeholder="مثال: Amsterdam - Hilton" style="width:100%;padding:12px;background:var(--gray);border:1px solid #333;border-radius:10px;color:var(--white);font-family:Tajawal,sans-serif;font-size:14px;outline:none;">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button onclick="closeScheduleModal()" style="padding:12px;background:transparent;border:1px solid #333;border-radius:10px;color:var(--text-muted);font-family:Tajawal,sans-serif;font-size:14px;cursor:pointer;">إلغاء</button>
+      <button onclick="saveScheduleModal()" style="padding:12px;background:var(--gold);border:none;border-radius:10px;color:var(--black);font-family:Tajawal,sans-serif;font-size:14px;font-weight:700;cursor:pointer;">إضافة ✅</button>
+    </div>
+  </div>
+</div>
+
 <div id="task-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:999;align-items:center;justify-content:center;padding:20px;">
   <div style="background:#1a1a1a;border:1px solid var(--gold);border-radius:20px;padding:24px;width:100%;max-width:360px;">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:20px;color:var(--gold);">📋 إضافة مهمة</h3>
@@ -1368,19 +1394,34 @@ function renderAdminSchedules() {
   }).join('');
 }
 
-function openAddSchedule(worker) {
-  const start = prompt(`${worker} — ${currentLang==='en'?'Start time':'وقت البدء'} (HH:MM)`, '08:00');
-  if(!start) return;
-  const end = prompt(`${currentLang==='en'?'End time':'وقت الانتهاء'} (HH:MM)`, '16:00');
-  if(!end) return;
-  const loc = prompt(`${currentLang==='en'?'Location':'الموقع'}`, 'Amsterdam');
+let scheduleModalWorker = '';
 
+function openAddSchedule(worker) {
+  scheduleModalWorker = worker;
+  document.getElementById('schedule-modal-worker-name').textContent = '🧹 ' + worker;
+  document.getElementById('schedule-start').value = '08:00';
+  document.getElementById('schedule-end').value = '16:00';
+  document.getElementById('schedule-location').value = '';
+  document.getElementById('schedule-modal').style.display = 'flex';
+}
+
+function closeScheduleModal() {
+  document.getElementById('schedule-modal').style.display = 'none';
+}
+
+function saveScheduleModal() {
+  const start = document.getElementById('schedule-start').value;
+  const end = document.getElementById('schedule-end').value;
+  const loc = document.getElementById('schedule-location').value.trim();
+  if(!start || !end) { showToast('حدد وقت البدء والانتهاء', 'error'); return; }
   const schedules = getSchedules();
-  schedules.push({ id: Date.now(), worker, date: todayStr(), startTime: start, endTime: end, location: loc||'' });
+  schedules.push({ id: Date.now(), worker: scheduleModalWorker, date: todayStr(), startTime: start, endTime: end, location: loc });
   saveSchedules(schedules);
+  closeScheduleModal();
   renderAdminSchedules();
+  renderAdminTasks();
   checkLateWorkers();
-  showToast(`✅ ${worker} ${currentLang==='en'?'scheduled':'مجدول'}`, 'success');
+  showToast('✅ ' + scheduleModalWorker + ' مجدول', 'success');
 }
 
 function deleteSchedule(id) {
