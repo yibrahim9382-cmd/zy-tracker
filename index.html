@@ -271,6 +271,12 @@
       <button class="date-chip" onclick="setPayPeriod('thismonth',this)">هذا الشهر</button>
       <button class="date-chip" onclick="setPayPeriod('lastmonth',this)">الشهر الماضي</button>
     </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:13px;color:var(--text-muted);display:block;margin-bottom:6px;">العامل</label>
+      <select id="payroll-worker-filter" style="width:100%;padding:10px 12px;background:var(--gray);border:1px solid #333;border-radius:10px;color:var(--white);font-family:Tajawal,sans-serif;font-size:14px;outline:none;">
+        <option value="">كل العمال</option>
+      </select>
+    </div>
     <div style="display:flex;align-items:center;gap:10px;">
       <label style="font-size:13px;color:var(--text-muted);white-space:nowrap;">سعر الساعة €</label>
       <input type="number" id="hourly-rate" value="15" min="1" max="100" style="width:90px;padding:10px 12px;background:var(--gray);border:1px solid var(--gold);border-radius:10px;color:var(--gold);font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;outline:none;text-align:center;">
@@ -917,6 +923,8 @@ function initPayroll() {
   const mon = new Date(now); mon.setDate(now.getDate()-now.getDay()+1);
   document.getElementById('pay-from').value = mon.toISOString().slice(0,10);
   document.getElementById('pay-to').value = now.toISOString().slice(0,10);
+  const sel = document.getElementById('payroll-worker-filter');
+  if(sel) { sel.innerHTML = '<option value="">كل العمال</option>' + getWorkers().map(w=>`<option value="${w}">${w}</option>`).join(''); }
   calcPayroll();
 }
 
@@ -936,11 +944,13 @@ function setPayPeriod(p, el) {
 function calcPayroll() {
   const fromVal=document.getElementById('pay-from').value; const toVal=document.getElementById('pay-to').value;
   const rate=parseFloat(document.getElementById('hourly-rate').value)||15;
+  const workerFilter = document.getElementById('payroll-worker-filter') ? document.getElementById('payroll-worker-filter').value : '';
   if(!fromVal||!toVal) return;
   const from=new Date(fromVal+'T00:00:00'); const to=new Date(toVal+'T23:59:59');
   document.getElementById('payroll-period-label').textContent = `${fromVal} → ${toVal} · €${rate}/uur`;
-  const shifts = getData().shifts.filter(s=>{ const sd=new Date(s.checkIn); return sd>=from&&sd<=to&&s.checkOut; });
-  const workers = getWorkers();
+  let shifts = getData().shifts.filter(s=>{ const sd=new Date(s.checkIn); return sd>=from&&sd<=to&&s.checkOut; });
+  if(workerFilter) shifts = shifts.filter(s=>s.worker===workerFilter);
+  const workers = workerFilter ? [workerFilter] : getWorkers();
   const byWorker = {}; workers.forEach(w=>{byWorker[w]={shifts:[],totalMs:0};});
   shifts.forEach(s=>{ if(byWorker[s.worker]){ byWorker[s.worker].shifts.push(s); byWorker[s.worker].totalMs+=s.durationMs||0; }});
   const allW = workers.filter(w=>byWorker[w].shifts.length>0);
@@ -955,9 +965,15 @@ function calcPayroll() {
     const byDate={}; wd.shifts.forEach(s=>{if(!byDate[s.date])byDate[s.date]=[];byDate[s.date].push(s);});
     const daysHtml=Object.entries(byDate).map(([date,ds])=>{
       const dayMs=ds.reduce((a,s)=>a+(s.durationMs||0),0);
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:4px;">
-        <div><div style="font-size:12px;color:var(--white);">${date}</div><div style="font-size:11px;color:var(--text-muted);">${ds.length} جلسة</div></div>
-        <div style="text-align:left;"><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#aaa;">${(dayMs/3600000).toFixed(2)}h</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--gold-light);">€${(dayMs/3600000*rate).toFixed(2)}</div></div>
+      const locHtml=ds.map(s=>{
+        const loc = s.clientName || s.locationName || (s.location ? s.location.lat+','+s.location.lng : '');
+        return loc ? `<div style="font-size:11px;color:var(--gold);margin-top:2px;">📍 ${loc} · ${fmtTime(s.checkIn)}–${fmtTime(s.checkOut)}</div>` : '';
+      }).join('');
+      return `<div style="padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:4px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div><div style="font-size:12px;color:var(--white);">${date}</div><div style="font-size:11px;color:var(--text-muted);">${ds.length} جلسة</div></div>
+          <div style="text-align:left;"><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#aaa;">${(dayMs/3600000).toFixed(2)}h</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--gold-light);">€${(dayMs/3600000*rate).toFixed(2)}</div></div>
+        </div>${locHtml}
       </div>`;
     }).join('');
     return `<div class="worker-row" style="margin-bottom:12px;"><div class="worker-row-header"><div><div class="worker-row-name">🧹 ${w}</div><div class="worker-row-location">${wd.shifts.length} جلسة · ${fmtDur(wd.totalMs)}</div></div><div style="text-align:left;"><div style="font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--gold);">€${pay.toFixed(2)}</div><div style="font-size:10px;color:var(--text-muted);">${hrs.toFixed(2)}h × €${rate}</div></div></div><div style="margin-top:4px;">${daysHtml}</div><div class="total-row"><span>المستحق للدفع</span><strong style="font-size:16px;">€${pay.toFixed(2)}</strong></div></div>`;
